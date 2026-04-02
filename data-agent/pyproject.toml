@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "asyncmy>=0.2.11",
     "cryptography>=46.0.3",
-    "elasticsearch[async]<9",
+    "elasticsearch[async]>=8,<9",
     "fastapi[standard]>=0.128.0",
     "huggingface-hub>=0.36.0",
     "jieba>=0.42.1",

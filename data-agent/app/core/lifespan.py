@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.es_client import es_client_manager
 from app.clients.mysql_client import dw_client_manager, meta_client_manager
-from app.clients.qdrant_client import qdrant_client_manager
+from app.clients.qdrant_client_manager import qdrant_client_manager
 
 
 @asynccontextmanager

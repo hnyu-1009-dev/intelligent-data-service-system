@@ -3,7 +3,7 @@ from fastapi import Depends
 from app.agent.graph import graph
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.mysql_client import dw_client_manager, meta_client_manager
-from app.clients.qdrant_client import qdrant_client_manager
+from app.clients.qdrant_client_manager import qdrant_client_manager
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository

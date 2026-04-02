@@ -79,3 +79,4 @@ app_config: AppConfig = load_config(AppConfig, config_file)
 
 if __name__ == '__main__':
     print(app_config.db_meta.port)
+    print(app_config)

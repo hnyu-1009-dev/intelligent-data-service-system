@@ -1,24 +1,81 @@
+# 这是元数据知识库构建使用的配置文件。
+#
+# 这份 YAML 的核心作用：
+# 1. 描述 dw 数据库中有哪些表需要纳入元数据管理
+# 2. 描述每张表里的字段在“业务语义”上扮演什么角色
+# 3. 为字段补充自然语言描述和别名，方便后续语义检索
+# 4. 指定哪些字段的实际值需要同步到 Elasticsearch
+# 5. 定义业务指标，以及指标和底层字段之间的关系
+#
+# 这份配置通常会被类似 MetaKnowledgeService 这样的服务加载，
+# 然后驱动整个“元知识库构建流程”：
+# - 读取表和字段定义
+# - 从 dw 中获取真实字段类型、样例值
+# - 写入 meta 数据库
+# - 同步字段/指标语义到 Qdrant
+# - 同步部分字段值到 Elasticsearch
+
+# tables：
+# 定义需要纳入元数据管理的“表”列表。
+# 每个元素都表示一张业务表或维度表。
 tables:
+  # 第一张表：地区维度表
   - name: dim_region
+    # role：
+    # 表角色。
+    # dim 表示“维度表”，通常用于提供分析视角，
+    # 比如地区、商品、客户、时间等。
     role: dim
+
+    # description：
+    # 表的业务描述。
+    # 这段文本非常重要，后续可能会被用于：
+    # - 元数据展示
+    # - 向量检索
+    # - 大模型理解表含义
     description: 地区维度表，用于描述订单发生的地理区域信息。
+
+    # columns：
+    # 当前表包含的字段定义列表。
     columns:
       - name: region_id
+        # role：
+        # 字段角色。
+        # primary_key 表示主键字段，用于唯一标识一条记录。
         role: primary_key
+
+        # description：
+        # 字段的业务含义说明。
         description: 地区唯一标识。
+
+        # alias：
+        # 字段别名列表。
+        # 这些别名主要用于增强自然语言理解和语义召回。
+        # 例如用户问“区域ID”，系统也能匹配到 region_id。
         alias: [ 地区ID, 区域ID ]
+
+        # sync：
+        # 是否把该字段的“实际值”同步到 Elasticsearch。
+        # false 表示不同步。
+        #
+        # 主键一般不适合做值检索，所以这里关闭。
         sync: false
 
       - name: province
         role: dimension
+        # dimension 表示维度字段，适合用于筛选、分组、聚合分析。
         description: 订单所属的省份名称。
         alias: [ 省份, 省, 所在省份 ]
+
+        # 省份是典型可检索值，所以同步到 ES。
         sync: true
 
       - name: region_name
         role: dimension
         description: 订单所属的大区名称，如华东、华南等。
         alias: [ 地区, 区域, 大区 ]
+
+        # 比如“华东”“华南”这类值很适合做检索和实体识别。
         sync: true
 
       - name: country
@@ -27,21 +84,26 @@ tables:
         alias: [ 国家, 国家名称 ]
         sync: true
 
-
+  # 第二张表：客户维度表
   - name: dim_customer
     role: dim
     description: 客户维度表，描述下单客户的基本属性。
+
     columns:
       - name: customer_id
         role: primary_key
         description: 客户唯一标识。
         alias: [ 客户ID, 用户ID ]
+
+        # 主键值通常不作为自然语言值检索重点，因此不同步。
         sync: false
 
       - name: customer_name
         role: dimension
         description: 客户名称。
         alias: [ 客户名称, 用户名称 ]
+
+        # 用户名称通常是可检索实体，因此同步。
         sync: true
 
       - name: gender
@@ -54,12 +116,15 @@ tables:
         role: dimension
         description: 客户会员等级。
         alias: [ 会员等级, 用户等级 ]
+
+        # 像“黄金会员”“白银会员”这类值很适合 ES 检索。
         sync: true
 
-
+  # 第三张表：商品维度表
   - name: dim_product
     role: dim
     description: 商品维度表，描述商品的基本属性信息。
+
     columns:
       - name: product_id
         role: primary_key
@@ -71,6 +136,8 @@ tables:
         role: dimension
         description: 商品名称。
         alias: [ 商品名称, 产品名称 ]
+
+        # 商品名称通常需要参与检索。
         sync: true
 
       - name: category
@@ -85,27 +152,34 @@ tables:
         alias: [ 品牌, 品牌名称 ]
         sync: true
 
-
+  # 第四张表：时间维度表
   - name: dim_date
     role: dim
     description: 时间维度表，用于多时间粒度分析。
+
     columns:
       - name: date_id
         role: primary_key
         description: 日期唯一标识，格式 yyyyMMdd。
         alias: [ 日期ID, 日期 ]
+
+        # 主键形式的日期 ID 不适合直接做值检索。
         sync: false
 
       - name: year
         role: dimension
         description: 年份。
         alias: [ 年, 年份 ]
+
+        # 年通常可由规则推断，且值空间较小，这里选择不同步。
         sync: false
 
       - name: quarter
         role: dimension
         description: 季度。
         alias: [ 季度 ]
+
+        # “Q1”“Q2”这类值有时适合检索，所以这里同步。
         sync: true
 
       - name: month
@@ -120,9 +194,14 @@ tables:
         alias: [ 日, 天 ]
         sync: false
 
+  # 第五张表：订单事实表
   - name: fact_order
+    # fact 表示“事实表”。
+    # 事实表一般存放可统计、可聚合的业务事件数据。
     role: fact
+
     description: 订单事实表，记录订单数量和金额等核心指标。
+
     columns:
       - name: order_id
         role: primary_key
@@ -131,6 +210,7 @@ tables:
         sync: false
 
       - name: customer_id
+        # foreign_key 表示外键，用于关联维度表。
         role: foreign_key
         description: 关联客户维度的外键。
         alias: [ 客户ID, 用户ID ]
@@ -155,9 +235,13 @@ tables:
         sync: false
 
       - name: order_quantity
+        # measure 表示度量字段，通常用于 sum、avg、count 等聚合计算。
         role: measure
         description: 订单中商品的购买数量。
         alias: [ 销量, 购买数量, 件数 ]
+
+        # 度量字段一般更适合作为“指标计算底层字段”，
+        # 而不是做值检索，因此通常不同步。
         sync: false
 
       - name: order_amount
@@ -166,15 +250,45 @@ tables:
         alias: [ 销售额, 订单金额, 收入 ]
         sync: false
 
-
+# metrics：
+# 定义系统中的业务指标。
+# 指标和字段不同：
+# - 字段是数据库里的原始列
+# - 指标是业务语义层对象
+#
+# 例如：
+# - GMV 是一个指标
+# - fact_order.order_amount 是其底层相关字段
 metrics:
   - name: GMV
+    # description：
+    # 指标的业务定义说明。
+    # 这对后续语义理解和指标检索非常重要。
     description: 全称Gross Merchandise Value，表示所有订单的成交金额总和。
+
+    # relevant_columns：
+    # 该指标关联的底层字段列表。
+    # 这里用“表名.字段名”的形式唯一标识字段。
     relevant_columns:
       - fact_order.order_amount
+
+    # alias：
+    # 指标别名，用于增强自然语言召回。
     alias: [ 成交总额, 订单总额 ]
+
   - name: AOV
     description: 全称Average Order Value，表示所有订单的成交金额平均值。
+
+    # 这里配置的是 relevant_columns，
+    # 表示这个指标与哪些字段相关。
+    #
+    # 注意：
+    # 从业务语义上看，AOV（平均订单金额）通常更直接关联的是
+    # fact_order.order_amount，而不是 fact_order.order_quantity。
+    #
+    # 当前这份配置保留你的原始写法不变，只添加解释注释。
+    # 如果你后续要做更准确的指标定义，这里建议再核对一次。
     relevant_columns:
       - fact_order.order_quantity
+
     alias: [ 平均单价, 平均订单金额 ]
