@@ -12,15 +12,15 @@ logging:
 db_meta:
   host: localhost
   port: 3307
-  user: jasper
-  password: mysql
+  user:
+  password:
   database: meta
 
 db_dw:
   host: localhost
   port: 3307
-  user: jasper
-  password: mysql
+  user:
+  password:
   database: dw
 
 qdrant:
@@ -42,4 +42,4 @@ es:
 
 llm:
   model_name: deepseek-chat
-  api_key: sk-52ce854170bc4e0cac1f5b8f0efcd47c
+  api_key:
